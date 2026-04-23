@@ -1,0 +1,56 @@
+version: "3.8"
+
+services:
+  planka:
+    image: ghcr.io/plankanban/planka:latest
+    container_name: planka
+    restart: unless-stopped
+    ports:
+      - "1337:1337"
+    environment:
+      - BASE_URL=${BASE_URL}
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=${DATABASE_URL}
+      - DEFAULT_ADMIN_EMAIL=${DEFAULT_ADMIN_EMAIL}
+      - DEFAULT_ADMIN_PASSWORD=${DEFAULT_ADMIN_PASSWORD}
+      - DEFAULT_ADMIN_NAME=${DEFAULT_ADMIN_NAME}
+      - DEFAULT_ADMIN_USERNAME=${DEFAULT_ADMIN_USERNAME}
+    volumes:
+      - planka_uploads:/app/public/user-avatars
+      - planka_attachments:/app/private/attachments
+    depends_on:
+      postgres:
+        condition: service_healthy  # Ждать пока БД не станет здоровой
+    networks:
+      - planka_network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: planka_postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      #- POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - planka_network
+
+volumes:
+  planka_uploads:
+    name: planka_uploads
+  planka_attachments:
+    name: planka_attachments
+  postgres_data:
+    name: planka_postgres_data
+
+networks:
+  planka_network:
+    name: planka_network
+    driver: bridge
